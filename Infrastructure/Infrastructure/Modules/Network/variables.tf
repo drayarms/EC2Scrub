@@ -14,17 +14,17 @@ variable "aws_igw_name"{
 
 variable "azs"{
 	type = list(string)
-	default = ["us-west-1a", "us-west-1b"]
+	default = ["us-west-1a", "us-west-1c"]
 }
 
 variable "public_subnet_cidr"{ # Ensure the number of public subnets is a multiple of the number of AZs
 	type = list(string)
-	default = ["10.1.1.0/24", "10.1.2.0/24"]
+	default = ["10.3.1.0/24", "10.3.2.0/24"]
 }
 
 variable "private_subnet_cidr"{ # Ensure the number of private subnets is a multiple of the number of AZs
 	type = list(string)
-	default = ["10.1.3.0/24", "10.1.4.0/24"]
+	default = ["10.3.3.0/24", "10.3.4.0/24"]
 }
 
 variable "public_rt_name"{
