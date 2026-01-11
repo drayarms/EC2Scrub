@@ -3,14 +3,9 @@ variable "aws_vpc_id" {
   type = string
 }
 
-variable "aws_private_subnet_id0" {
-  description = "Subnet ID from the network module"
-  type = string
-}
-
-variable "aws_private_subnet_id1" {
-  description = "Subnet ID from the network module"
-  type = string
+variable "aws_private_subnet_ids" {
+	description = "List of private subnet IDs for Lambda"
+	type = list(string)
 }
 
 variable "lambda_source_path" {

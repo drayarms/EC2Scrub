@@ -1,5 +1,5 @@
 variable "vpc_cidr"{
-	default = "10.1.0.0/16" 
+	default = "10.3.0.0/16" 
 }
 
 variable "aws_vpc_name"{
@@ -31,4 +31,3 @@ variable "public_rt_name"{
 	type = string
 	default = "Public-Route-Table"
 }
-

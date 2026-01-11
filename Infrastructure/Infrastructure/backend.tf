@@ -3,10 +3,10 @@
 
 terraform {
 	backend "s3" {
-		bucket =  "my-infrastructure-state-bucket" # Reference from backend module
+		bucket =  "ec2-scrub-infrastructure-state-bucket" # Reference from backend module
 		key = "global/terraform.tfstate" # Path to file inside the S3 bucket
 		region = "us-west-1"
-		dynamodb_table = "terraform-lock" # Reference from backend module
+		dynamodb_table = "ec2-scrub-terraform-lock" # Reference from backend module
 		encrypt = true
 	}
 }
