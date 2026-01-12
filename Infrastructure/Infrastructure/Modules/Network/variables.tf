@@ -4,12 +4,12 @@ variable "vpc_cidr"{
 
 variable "aws_vpc_name"{
 	type = string
-	default = "Production VPC"
+	default = "EC2-Scrubber-VPC"
 }
 
 variable "aws_igw_name"{
 	type = string
-	default = "My-IGW"
+	default = "EC2-Scrubber-IGW"
 }
 
 variable "azs"{

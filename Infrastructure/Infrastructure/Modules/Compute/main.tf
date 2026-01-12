@@ -131,3 +131,33 @@ resource "aws_lambda_function" "ec2_inventory" {
     Name = var.lambda_name
   }
 }
+
+#Event bridge to trigger lambda function daily
+resource "aws_cloudwatch_event_rule" "daily_ec2_scrub" {
+  name = var.event_bridge_name
+  description = "Trigger EC2 snapshot scrubbing Lambda daily"
+  schedule_expression = "cron(0 2 * * ? *)"  #daily 2:00 AM UTC
+  is_enabled = true
+}
+
+# Permission for EventBridge to invoke Lambda
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id = "AllowEventBridgeInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ec2_inventory.function_name
+  principal = "events.amazonaws.com"
+  source_arn = aws_cloudwatch_event_rule.daily_ec2_scrub.arn
+}
+
+# Connect EventBridge rule to Lambda
+resource "aws_cloudwatch_event_target" "daily_ec2_scrub_target" {
+  rule = aws_cloudwatch_event_rule.daily_ec2_scrub.name
+  target_id = var.event_bridge_target_id
+  arn = aws_lambda_function.ec2_inventory.arn
+
+  input = jsonencode({
+    DryRun = true
+  })
+
+  depends_on = [aws_lambda_permission.allow_eventbridge]
+}

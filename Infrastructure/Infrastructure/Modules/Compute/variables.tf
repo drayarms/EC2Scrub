@@ -21,3 +21,13 @@ variable "lambda_handler" {
   type = string
 }
 
+variable "event_bridge_target_id" {
+	type = string
+	default = "LambdaEC2Scrubber"
+}
+
+variable "event_bridge_name" {
+	type = string
+	default = "daily-ec2-scrub"
+}
+
