@@ -1,84 +1,61 @@
-"""import boto3
+import boto3
+import os
+import logging
+from datetime import datetime, timezone, timedelta
+from botocore.exceptions import ClientError
 
+#Config logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+#Create EC2 clinet (region inherited from Lambda exec env)
 ec2 = boto3.client("ec2")
 
+MAX_AGE_VALUE = float(os.environ.get("MAX_AGE_VALUE", 365))  # default 365
+MAX_AGE_UNIT = os.environ.get("TIMEFRAME", "days").lower()   # default 'days'
+
+if MAX_AGE_UNIT == "days":
+    MAX_AGE = timedelta(days=MAX_AGE_VALUE)
+elif MAX_AGE_UNIT == "hours":
+    MAX_AGE = timedelta(hours=MAX_AGE_VALUE)
+elif MAX_AGE_UNIT == "minutes":
+    MAX_AGE = timedelta(minutes=MAX_AGE_VALUE)
+else:
+    raise ValueError(f"Invalid TIMEFRAME value: {MAX_AGE_UNIT}")
+
 def lambda_handler(event, context):
-    response = ec2.describe_instances()
+    logger.info("Starting EC2 snapshot scrubbing")
 
-    instances = []
-    for reservation in response["Reservations"]:
-        for instance in reservation["Instances"]:
-            instances.append({
-                "InstanceId": instance["InstanceId"],
-                "State": instance["State"]["Name"],
-                "SubnetId": instance.get("SubnetId"),
-                "VpcId": instance.get("VpcId")
-            })
+    try:
+        #Only snapshots owned by this account
+        response = ec2.describe_snapshots(OwnerIds=["self"])
+        snapshots = response.get("Snapshots", [])
 
-    return {
-        "instance_count": len(instances),
-        "instances": instances
-    }"""
+        logger.info(f"Found {len(snapshots)} snapshots")
 
-    import boto3
-    import os
-    import logging
-    from datetime import datetime, timezone, timedelta
-    from botocore.exceptions import ClientError
+        for snapshot in snapshots:
+            snapshot_id = snapshot["SnapshotId"]
+            start_time = snapshot["StartTime"]
 
-    #Config logging
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+            age = datetime.now(timezone.utc) - start_time
 
-    #Create EC2 clinet (region inherited from Lambda exec env)
-    ec2 = boto3.client("ec2")
+            if age > MAX_AGE_VALUE:
+                logger.info(
+                    f"Snapshot {snapshot_id} is older than {MAX_AGE_VALUE} {MAX_AGE_UNIT}"
+                    f"(created {start_time})"
+                )
 
-    #Snapshot age threshold
-    #DAYS_OLD = 365
-    MAX_AGE = timedelta(days=365)
-    TIMEFRAME = "days"
-    #MAX_AGE = timedelta(hours=1) #For Debugging
-    #timeframe = "hours"
-    #MAX_AGE = timedelta(minutes=1) #For Debugging
-    #timeframe = "minutes"
-
-    def lambda_handler(event, context):
-        logger.info("Starting EC2 snapshot scrubbing")
-
-        #cuttoff_date = datetime.now(timezone.utc) timedelta(days=DAYS_OLD)
-
-        try:
-            #Only snapshots owned by this account
-            response = ec2.describe_snapshots(OwnerIds=["self"])
-            snapshots = response.get("Snapshots", [])
-
-            logger.info(f"Found {len(snapshots)} snapshots")
-
-            for snapshot in snapshots:
-                snapshot_id = snapshot["SnapshotID"]
-                start_time = snapshot["StartTime"]
-
-                age = datetime.now(timezone.utc) - start_time
-
-                #if start_time < cuttoff_date:
-                if age > MAX_AGE:
-                    logger.info(
-                        #f"Snapshot {snapshot_id} is older than {DAYS_OLD} days"
-                        f"Snapshot {snapshot_id} is older than {MAX_AGE} {TIMEFRAME}"
-                        f"(created {start_time})"
+                try:
+                    logger.info(f"Deleting snapshot: {snapshot_id}")
+                    ec2.delete_snapshot(SnapshotId=snapshot_id)
+                except ClientError as e:
+                    logger.error(
+                        f"Failed to delete snapshot {snapshot_id}: "
+                        f"{e.response['Error']['Message']}"
                     )
 
-                    try:
-                        logger.info(f"Deleting snapshot: {snapshot_id}")
-                        ec2.delete_snapshot(SnapshotId=snapshot_id)
-                    except ClientError as e:
-                        logger.error(
-                            f"Failed to delete snapshot {snapshot_id}: "
-                            f"{e.response['Error']['Message']}"
-                        )
+        logger.info("Completed snapshot scrubbing")
 
-            logger.info("Completed snapshot scrubbing")
-
-        except ClientError as e:
-            logger.error(f"Error retrieving snapshots: {e.response['Error']['message']}")
-            raise
+    except ClientError as e:
+        logger.error(f"Error retrieving snapshots: {e.response['Error']['message']}")
+        raise
