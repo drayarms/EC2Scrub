@@ -11,9 +11,10 @@ logger.setLevel(logging.INFO)
 #Create EC2 clinet (region inherited from Lambda exec env)
 ec2 = boto3.client("ec2")
 
-MAX_AGE_VALUE = float(os.environ.get("MAX_AGE_VALUE", 365))  # default 365
+MAX_AGE_VALUE = int(os.environ.get("MAX_AGE_VALUE", 365))  # default 365
 MAX_AGE_UNIT = os.environ.get("TIMEFRAME", "days").lower()   # default 'days'
 
+MAX_AGE = timedelta(days=365)
 if MAX_AGE_UNIT == "days":
     MAX_AGE = timedelta(days=MAX_AGE_VALUE)
 elif MAX_AGE_UNIT == "hours":
@@ -38,8 +39,8 @@ def lambda_handler(event, context):
             start_time = snapshot["StartTime"]
 
             age = datetime.now(timezone.utc) - start_time
-
-            if age > MAX_AGE_VALUE:
+            print(f"age is: {age} max age is: {MAX_AGE}")
+            if age > MAX_AGE:
                 logger.info(
                     f"Snapshot {snapshot_id} is older than {MAX_AGE_VALUE} {MAX_AGE_UNIT}"
                     f"(created {start_time})"
